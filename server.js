@@ -3,32 +3,21 @@ import 'dotenv/config'
 import myDateTime from './date'
 import getURL from './getURL'
 import viewEngine from './viewEngine'
-import bcrypt from 'bcrypt';
+import initWebRoute from './route/WebRouter';
 import db from './db';  // Assuming you have a database connection set up in db.js
-import session from 'express-session';
 
 
 const app = express()
-const session = require('express-session');
 const port=process.env.PORT
 const bodyParser = require('body-parser');
 const userController = require('./controllers/UserController');
 
+initWebRoute(app);
 viewEngine(app);
 
-// app.get('/', (req, res) => {
-//     res.send('Hello World')
-// })
-
-
-app.use(session({
-    secret: '123', // A secret key to sign the session ID
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: true } // In production, set this to true (HTTPS required)
-}));
-
 app.use(bodyParser.urlencoded({ extended: true }));
+
+
 app.listen(port, () =>{
     console.log('Example app listening on post ${port}')
 })
@@ -44,27 +33,6 @@ app.get('/users', (req, res) => {
         }
     });
 });
-
-// app.post('/adduser', (req, res) => {
-//     const { username, password, fullname, address, sex, email } = req.body;
-//     const sql = 'INSERT INTO users (username, password, fullname, address, sex, email) VALUES (?, ?, ?, ?, ?, ?)';
-
-//     // Hash the password if needed (you can use bcrypt for hashing passwords)
-//     // bcrypt.hash(password, 10, (err, hashedPassword) => {
-
-//     db.query(sql, [username, password, fullname, address, sex, email], (err, result) => {
-//         if (err) {
-//             console.error('Error adding user:', err);
-//             res.status(500).send('Error adding user');
-//         } else {
-//             res.redirect('/users');  // Redirect to the user list after successful insertion
-//         }
-//     });
-//     // });
-// });
-
-
-
 
 app.post('/adduser', (req, res) => {
     const { username, password, fullname, address, sex, email } = req.body;
@@ -155,57 +123,6 @@ app.post('/deleteuser/:username', (req, res) => {
     });
 });
 
-
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-
-    // Fetch user from the database
-    const sql = 'SELECT * FROM users WHERE username = ?';
-    db.query(sql, [username], (err, result) => {
-        if (err) {
-            console.error('Error fetching user:', err);
-            return res.status(500).send('Internal server error');
-        }
-
-        // If user not found
-        if (result.length === 0) {
-            return res.render('login', { error: 'Invalid username or password' });
-        }
-
-        const user = result[0];
-
-        // Compare the entered password with the hashed password in the database
-        bcrypt.compare(password, user.password, (err, isMatch) => {
-            if (err) {
-                console.error('Error comparing passwords:', err);
-                return res.status(500).send('Internal server error');
-            }
-
-            if (isMatch) {
-                // Store user session information (e.g., user ID)
-                req.session.userId = user.id;
-                res.redirect('/users');  // Redirect to the users list or any protected page
-            } else {
-                // Invalid password
-                res.render('login', { error: 'Invalid username or password' });
-            }
-        });
-    });
-});
-
-
-app.get('/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            return res.redirect('/');
-        }
-
-        // Sau khi đăng xuất, chuyển hướng về trang chủ hoặc trang đăng nhập
-        res.redirect('/login');
-    });
-});
-
-
 // Tạo route để hiển thị thời gian
 app.get('/date', (req, res) => {
     const currentDateTime = myDateTime();  // Gọi hàm myDateTime từ module date
@@ -227,10 +144,6 @@ app.get('/', (req,res) => {
     res.render('home');
 })
 
-app.get('/about', (req,res) => {
-    res.render('about');
-})
-
 app.get('/home', (req,res) => {
     res.render('main');
 })
@@ -244,17 +157,9 @@ app.get('/user', (req,res) => {
 })
 
 app.get('/adduser', (req, res) => {
-    res.render('addUser');  // Render the addUser.ejs form
+    res.render('addUser');  // Render the addUser.ejs formx
 });
 
-app.get('/login', (req, res) => {
-    res.render('login', { error: null });  // Render the login page, initially with no error
-});
-
-app.get('/users', isAuthenticated, (req, res) => {
-    // This route is protected; only accessible if the user is logged in
-    // Fetch and display the list of users
-});
 
 
 // User routes
@@ -267,10 +172,4 @@ app.post('/users/delete/:username', userController.deleteUser);    // Handle del
 
 
 
-function isAuthenticated(req, res, next) {
-    if (req.session.userId) {
-        return next();  // User is authenticated, proceed to the next function
-    } else {
-        res.redirect('/login');  // Not authenticated, redirect to login page
-    }
-}
+
